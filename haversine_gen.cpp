@@ -1,3 +1,4 @@
+#include <cfloat>
 #include <cstdio>
 #define _CRT_SECURE_NO_WARNINGS
 
@@ -6,7 +7,7 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include ".\haversine_calc.cpp"
+#include "haversine_calc.cpp"
 
 typedef uint64_t u64;
 #define u64max UINT64_MAX;
@@ -40,8 +41,13 @@ f64 rand_offset(f64 center, f64 radius, f64 max_allowed)
 
 int main(int argc, char **argv)
 {
+    u64 num_pts = atoll(argv[1]);
+    u64 max_pts = (1ULL << 34);
+    if (num_pts > max_pts) {
+        num_pts = max_pts;
+    }
+
     srand(time(NULL));
-    u64 num_pts = 1024000;
     f64 max_x = 180;
     f64 max_y = 90;
     u64 max_cluster_count = num_pts / 64 + 1;
@@ -53,6 +59,16 @@ int main(int argc, char **argv)
     f64 earth_radius = 6372.8;
     f64 sum = 0;
     f64 sum_coefficient = 1.0 / (f64)num_pts;
+    bool json_start = true;
+
+    FILE *json_out;
+    json_out = fopen("hav_output.json", "w");
+    if (json_out == NULL)
+    {
+        printf("Error! Could not open file.\n");
+    }
+    fputs("{\n", json_out);
+    fputs("\"pairs\":[", json_out);
 
     for (u64 i = 0; i < num_pts; i++)
     {
@@ -72,9 +88,24 @@ int main(int argc, char **argv)
 
         f64 hav_dist = RefHaversine(x0, y0, x1, y1, earth_radius);
         sum += hav_dist * sum_coefficient;
+        if (i == num_pts - 1)
+        {
+            fprintf(json_out, "{\"x0\":%.*f,", DBL_DIG, x0);
+            fprintf(json_out, "\"y0\":%.*f,", DBL_DIG, y0);
+            fprintf(json_out, "\"x1\":%.*f,", DBL_DIG, x1);
+            fprintf(json_out, "\"y1\":%.*f}\n", DBL_DIG, y1);
+        }
+        else
+        {
+            fprintf(json_out, "{\"x0\":%.*f,", DBL_DIG, x0);
+            fprintf(json_out, "\"y0\":%.*f,", DBL_DIG, y0);
+            fprintf(json_out, "\"x1\":%.*f,", DBL_DIG, x1);
+            fprintf(json_out, "\"y1\":%.*f},\n", DBL_DIG, y1);
+        }
     }
+    fputs("]}", json_out);
+    fclose(json_out);
     printf("%f\n", sum);
-
 
     return 0;
 }
